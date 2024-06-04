@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dog and Cat Classification with Teachable Machine</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8.4/dist/teachablemachine-image.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; }
+        video, canvas { margin-top: 10px; display: block; }
+        button { margin-top: 10px; padding: 10px 20px; font-size: 16px; }
+        #result { margin-top: 10px; font-size: 18px; }
+    </style>
+</head>
+<body>
+    <h1>Dog and Cat Classification with Teachable Machine</h1>
+    <button id="startButton">Start</button>
+    <div id="webcam-container">
+        <video id="webcam" autoplay playsinline width="224" height="224" style="display: none;"></video>
+    </div>
+    <div id="result"></div>
+
+    <script type="text/javascript">
+        let model, webcam, labelContainer, maxPredictions;
+
+        async function init() {
+            const URL = "https://teachablemachine.withgoogle.com/models/ZQzMUvoSM/"; // 여기에 Teachable Machine에서 제공된 모델 URL을 넣으세요.
+            const modelURL = URL + "model.json";
+            const metadataURL = URL + "metadata.json";
+
+            try {
+                console.log("Loading model...");
+                model = await tmImage.load(modelURL, metadataURL);
+                console.log("Model loaded");
+                maxPredictions = model.getTotalClasses();
+
+                // 웹캠 설정
+                const flip = true; // 좌우 반전 설정
+                webcam = new tmImage.Webcam(224, 224, flip); // 웹캠의 너비, 높이 설정
+                console.log("Setting up webcam...");
+                await webcam.setup(); // 웹캠 접근 권한 요청 및 설정
+                console.log("Webcam setup complete");
+                await webcam.play(); // 웹캠 시작
+                window.requestAnimationFrame(loop); // 루프 시작
+
+                // 웹캠 캔버스를 HTML 요소에 추가
+                document.getElementById("webcam-container").appendChild(webcam.canvas);
+                labelContainer = document.getElementById("result");
+            } catch (error) {
+                console.error("Failed to initialize:", error);
+            }
+        }
+
+        async function loop() {
+            try {
+                webcam.update(); // 웹캠 프레임 업데이트
+                await predict(); // 예측 수행
+                window.requestAnimationFrame(loop); // 루프 반복
+            } catch (error) {
+                console.error("Error in loop function:", error);
+            }
+        }
+
+        async function predict() {
+            try {
+                // 웹캠 이미지로부터 예측 수행
+                const prediction = await model.predict(webcam.canvas);
+                labelContainer.innerHTML = ''; // 이전 예측 결과 초기화
+                for (let i = 0; i < maxPredictions; i++) {
+                    const classPrediction = `${prediction[i].className}: ${(prediction[i].probability * 100).toFixed(2)}%`;
+                    labelContainer.appendChild(document.createElement('div')).innerHTML = classPrediction;
+                }
+            } catch (error) {
+                console.error("Error in predict function:", error);
+            }
+        }
+
+        document.getElementById("startButton").addEventListener("click", () => {
+            init();
+        });
+    </script>
+</body>
+</html>
